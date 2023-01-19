@@ -95,28 +95,28 @@ function findInLabel(labels: string | any[], body: string) {
   // If user and challengeId are null search in body of issue
   if (labelsObject.user === null || Number.isNaN(labelsObject.challengeId)) {
     const submissionEntered = body.split("### Submission Entered:");
-    console.log(submissionEntered);
+    // console.log(submissionEntered);
 
-    const submissionEnteredDivided = submissionEntered[1].split("\r");
-    console.log(submissionEnteredDivided);
+    const submissionEntered2 = submissionEntered[1].replace(/(\r)/gm, "");
+    // console.log(submissionEntered2);
 
-    const submissionEntered2 = submissionEnteredDivided.join('');
     const submissionEnteredDivided2 = submissionEntered2.split("\n");
+    // console.log(submissionEnteredDivided2);
 
     const submissionEnteredDividedClean = submissionEnteredDivided2.filter(line => line != '');
-    console.log(submissionEnteredDividedClean);
+    // console.log(submissionEnteredDividedClean);
 
     const challengeIdString = submissionEnteredDividedClean[0].split("Challenge Id: ");
-    console.log(challengeIdString);
+    // console.log(challengeIdString);
 
     const challengeId = Number(challengeIdString[1].substring(2, challengeIdString[1].length - 1));
-    console.log(challengeId);
+    // console.log(challengeId);
 
     const hunterString = submissionEnteredDividedClean[1].split("Hunter: ");
-    console.log(hunterString);
+    // console.log(hunterString);
 
     const hunter = hunterString[1];
-    console.log(hunter);
+    // console.log(hunter);
 
     labelsObject.challengeId = challengeId;
     labelsObject.user = hunter;    
