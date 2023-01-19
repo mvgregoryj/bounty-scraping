@@ -1,0 +1,26 @@
+{
+  "name": "bounty-scraping",
+  "version": "1.0.0",
+  "description": "Scraping issues of github repository",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc",
+    "start": "tsc && node dist/index.js"
+  },
+  "keywords": [
+    "api",
+    "github",
+    "issues"
+  ],
+  "author": "mvgregoryj",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "fs": "^0.0.1-security",
+    "octokit": "^2.0.11"
+  }
+}
