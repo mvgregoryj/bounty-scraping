@@ -1,5 +1,13 @@
 import * as dotenv from 'dotenv';
 import { Octokit } from 'octokit';
+import {
+  Users,
+  CurrentLeaderboard,
+  Questions,
+  ChallengeSubmission,
+  Label
+} from './utils';
+
 
 dotenv.config();
 
@@ -66,10 +74,24 @@ async function getReposTeam() {
   return arrayOfRepos;
 }
 
+// Function to scrap body of issue and return an array of strings with the lines of body after "### Submission Entered:\n\n"
+function cleanBody(body: string) {
+  const submissionEntered: string[] = body.split("### Submission Entered:");
+
+  const submissionEntered2: string = submissionEntered[1].replace(/(\r)/gm, "");
+
+  const submissionEnteredDivided2: string[] = submissionEntered2.split("\n");
+
+  // Delet from submissionEnteredDivided2 the '' elements included if the last element of array is ''
+  const submissionEnteredDividedClean: string[] = submissionEnteredDivided2.filter(line => line != '');
+
+  return submissionEnteredDividedClean;
+}
+
 // Function what leave an array of labels (objects) find the content (parameter) of key name.
 function findInLabel(labels: string | any[], body: string) {
 
-  const labelsObject = {
+  const labelsObject: Label = {
     challengeId: NaN,
     user: null,
     points: NaN,
@@ -94,28 +116,19 @@ function findInLabel(labels: string | any[], body: string) {
 
   // If user and challengeId are null search in body of issue
   if (labelsObject.user === null || Number.isNaN(labelsObject.challengeId)) {
-    const submissionEntered = body.split("### Submission Entered:");
-    // console.log(submissionEntered);
 
-    const submissionEntered2 = submissionEntered[1].replace(/(\r)/gm, "");
-    // console.log(submissionEntered2);
+    const submissionEnteredDividedClean: string[] = cleanBody(body);
 
-    const submissionEnteredDivided2 = submissionEntered2.split("\n");
-    // console.log(submissionEnteredDivided2);
-
-    const submissionEnteredDividedClean = submissionEnteredDivided2.filter(line => line != '');
-    // console.log(submissionEnteredDividedClean);
-
-    const challengeIdString = submissionEnteredDividedClean[0].split("Challenge Id: ");
+    const challengeIdString: string = submissionEnteredDividedClean[0].replace("Challenge Id: [#", "");
     // console.log(challengeIdString);
 
-    const challengeId = Number(challengeIdString[1].substring(2, challengeIdString[1].length - 1));
+    const challengeId = Number(challengeIdString.substring(0, challengeIdString.length - 1));
     // console.log(challengeId);
 
-    const hunterString = submissionEnteredDividedClean[1].split("Hunter: ");
+    const hunterString = submissionEnteredDividedClean[1].replace("Hunter: ", "");
     // console.log(hunterString);
 
-    const hunter = hunterString[1];
+    const hunter = hunterString;
     // console.log(hunter);
 
     labelsObject.challengeId = challengeId;
@@ -129,7 +142,7 @@ function findInLabel(labels: string | any[], body: string) {
 function scrapQuestions(body: string, repo: string) {
 
   // Create a array of type object
-  const questions: Object[] = [];
+  const questions: Questions[] = [];
 
   // if (repo != "solana-colombia-hacker-house-bounty-program") {
 
@@ -137,14 +150,7 @@ function scrapQuestions(body: string, repo: string) {
 
     // Example of body = "\n___\n### Description\n\nHeavy Duty Builders wants to give a non-official space for teams like yours, that were expecting to share their projects on Demo Day. That’s why this is a very simple but important challenge that would not only help you earn more points but also to share your impact on the Solana ecosystem. \n\nGood luck **hunter**!\n\n1. Make a **SHORT** video of your elevator pitch!\n\n2. Publish it on Twitter with the #BreakpointChallenges and #NonOfficialDemoDay\n\n3. Include @HeavyDutyBuild\n\n\n### Tips\n-Let people know where they can find out more about your project or connect with the team.\n\n-Keep it simple! You never know who could be watching emojieyes\n\n\n___\n### Submission Entered:\n\nChallenge Id: [#223004011]\nHunter: Milan Cupac\n\n1. What’s your Twitter handle?:\n@Cupa" 
 
-    const submissionEntered: string[] = body.split("### Submission Entered:");
-    console.log(submissionEntered)
-
-    const submissionEnteredDivided = submissionEntered[1].split("\n");
-    console.log(submissionEnteredDivided)
-
-    // Delet from submissionEnteredDivided the '' elements included if th last element of array is ''
-    const submissionEnteredDividedClean = submissionEnteredDivided.filter(line => line != '');
+    const submissionEnteredDividedClean: string[] = cleanBody(body);
 
     // Delet 'Challenge Id' and 'Hunter' from submissionEnteredDividedClean
     submissionEnteredDividedClean.splice(0,2);
@@ -166,7 +172,7 @@ function scrapQuestions(body: string, repo: string) {
 function scrapUsers(body: string) {
 
   const obj = JSON.parse(body)
-  const users = obj.users;
+  const users: Users[] = obj.users;
   
   return users;
 }
@@ -174,7 +180,7 @@ function scrapUsers(body: string) {
 // Function to get all issues from a especific repository and team
 async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
 
-  const arrayIssues: Object[] = [];
+  const arrayIssues: (CurrentLeaderboard | ChallengeSubmission)[] = [];
   const numberPages = Math.ceil(numberIsues / 100);
 
   for (let i = 1; i <= numberPages; i++) {
@@ -188,7 +194,7 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
       page: i,
     })
 
-    const arrayOfIssues: Object[] = [];
+    const arrayOfIssues: (CurrentLeaderboard | ChallengeSubmission)[] = [];
     
     result.data.forEach(issue => {
 
@@ -198,7 +204,7 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
       if (!issue.hasOwnProperty('pull_request')) {
 
         // If the issue have name "Current Leaderboard"
-        if (issue.title === "Current Leaderboard") {
+        if (issue.title.startsWith("Current Leaderboard")) {
           arrayOfIssues.push(
             {
               title: issue.title,
@@ -227,49 +233,105 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
   return arrayIssues;
 }
 
+// Function to chek data type CurrentLeaderboard
+function instanceOfCurrentLeaderboard(object: any): object is CurrentLeaderboard {
+  return object.title.startsWith("Current Leaderboard");
+}
+// Function to chek data type ChallengeSubmission
+function instanceOfChallengeSubmission(object: any): object is ChallengeSubmission {
+  return object.title.startsWith("Challenge Submission");
+}
+
+// Function what by user finded in an issue create a object with properties user, points and an array of objects with properties challengeId and questions 
+function issuesPerUsers (issues: (CurrentLeaderboard | ChallengeSubmission)[]){
+  const issuesByUsers: Object = {};
+
+  // For each issue.user create a property/key in issuesByUsers with value {sumPoints and an array of issues asocciated with this user}
+
+  // if issue is a Challenges Submission add the points of the issue to the sumPoints of the user
+  // if issue is a Current Leaderboard create a property/key in issuesByUsers with value {sumPoints and an array of issues asocciated with this user}
+  for (const issue of issues) {
+
+    // Check if type of issue is CurrentLeaderboard
+    if (instanceOfCurrentLeaderboard(issue)) {
+      for (const user of issue.users) {
+        if (issuesByUsers.hasOwnProperty(`${user.user}`)) {
+          issuesByUsers[`${user.user}`].sumPoints += user.points;
+        } else {
+          issuesByUsers[`${user.user}`] = {
+            sumPoints: user.points,
+          }
+        }
+      }
+    } else if(instanceOfChallengeSubmission(issue)){
+    // Check if type of issue is ChallengeSubmission
+
+      if (issuesByUsers.hasOwnProperty(`${issue.user}`)) {
+        issuesByUsers[`${issue.user}`].sumPoints += issue.points;
+        issuesByUsers[`${issue.user}`].issues.push(issue);
+      } else {
+        issuesByUsers[`${issue.user}`] = {
+          sumPoints: issue.points,
+          issues: [issue]
+        }
+      } 
+    }
+  }
+  return issuesByUsers;
+}
+
+// Function to create a JSON file
+function createJSONFile(object: Object | Object[], name: string) {
+
+  // Convert the Object / Array of all issues in a JSON file
+  const fs = require('fs');
+  const data = JSON.stringify(object);
+
+  // Create folder and file if this dont exits
+  fs.promises.mkdir('./src/issues/', { recursive: true }).catch(console.error);
+  fs.writeFileSync(`./src/issues/${name}.json`, data)
+}
+
 (async function main() {
   try {
   //getIssues();
   //getTeams();
   const arrayOfRepos = await getReposTeam();
-  console.log(arrayOfRepos)
+  // console.log(arrayOfRepos)
 
   // Guardar todas las issues de todos los repositorio de arrayOfRepos en issuesOfAllRepos
 
   // Array of all issues from all repos
-  const issuesOfAllRepos = [];
+  const issuesOfAllRepos: (CurrentLeaderboard | ChallengeSubmission)[] = [];
 
   // For each repo return and save their issues
   for (let i = 0; i < arrayOfRepos.length; i++) {
-    const nameRepo = arrayOfRepos[i].name;
-    const ownerRepo = arrayOfRepos[i].owner;
-    const numberIsues = Number(arrayOfRepos[i].open_issues_count);
+    const nameRepo: string = arrayOfRepos[i].name;
+    const ownerRepo: string = arrayOfRepos[i].owner;
+    const numberIsues: number = Number(arrayOfRepos[i].open_issues_count);
 
-    const issuesPerRepo: Object[] = await getIssuesTeam(nameRepo, ownerRepo, numberIsues);
+    const issuesPerRepo: (CurrentLeaderboard | ChallengeSubmission)[] = await getIssuesTeam(nameRepo, ownerRepo, numberIsues);
 
-    console.log('Issues de ', nameRepo, ': ', issuesPerRepo.length);
+    // console.log('Issues de ', nameRepo, ': ', issuesPerRepo.length);
 
-    // issuesOfAllRepos.push(...issuesPerRepo);
+    // Add all issues of this repo to the array of all issues
+    issuesOfAllRepos.push(...issuesPerRepo);
 
     // Print the array of all issues in this repo
-    console.log(issuesPerRepo);
-    console.log(issuesPerRepo.length);
+    // console.log(issuesPerRepo);
+    // console.log(issuesPerRepo.length);
 
     // Convert the array of all issues in a JSON file
-    const fs = require('fs');
-    const data = JSON.stringify(issuesPerRepo);
-    fs.writeFileSync(`./src/issues/${nameRepo}.json`, data)
+    createJSONFile(issuesPerRepo, nameRepo)
   }
 
-  // // Print the array of all issues
-  // console.log(issuesOfAllRepos);
-  // console.log(issuesOfAllRepos.length);
+  const issuesPerUsersObject: Object = issuesPerUsers(issuesOfAllRepos);
 
-  // // Convert the array of all issues in a JSON file
-  // const fs = require('fs');
-  // const data = JSON.stringify(issuesOfAllRepos);
-  // fs.writeFileSync('./issues/issues.json', data)
+  // Print the Object of all issues
+  console.log(issuesPerUsersObject);
 
+  // Convert the Object of all issues in a JSON file
+  createJSONFile(issuesPerUsersObject, 'issues')
   
   } catch (error: any) {
     console.log(`Error! Status: ${error.status}. Message: ${error}`)
