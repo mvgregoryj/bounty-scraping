@@ -8,43 +8,11 @@ import {
   Label
 } from './utils';
 
-
 dotenv.config();
-
 
 const octokit = new Octokit({
     auth: process.env.TOKEN
 });
-
-// // Function to get all Issues from a especific repository
-// async function getIssues() {
-//   const result = await octokit.request("GET /repos/{owner}/{repo}/issues", {
-//       owner: "mvgregoryj",
-//       repo: "GregorMovies",
-//   });
-
-//   console.log(result)
-//   console.log(result.status)
-//   console.log(result.data)
-  
-//   const titleAndAuthor = result.data.map(issue => {
-//     return {
-//       title: issue.title,
-//       userID: issue.user.id
-//       }
-//     })
-  
-//   console.log(titleAndAuthor)
-// }
-
-// Function to get all teams from a especific organization
-async function getTeams() {
-  const result = await octokit.request("GET /orgs/{org}/teams", {
-      org: 'heavy-duty',
-  });
-
-  // console.log(result)
-}
 
 // Function to get all repositories public and privates from a especific team
 async function getReposTeam() {
@@ -52,8 +20,6 @@ async function getReposTeam() {
     org: 'heavy-duty',
     team_slug: 'bounty-program',
   })
-
-  // console.log(result)
 
   const arrayOfRepos = result.data.map(repo => { 
     return {
@@ -68,8 +34,6 @@ async function getReposTeam() {
       open_issues: repo.open_issues,
     }
   })
-
-  // const arrayOfRepos = result.data
 
   return arrayOfRepos;
 }
@@ -120,16 +84,12 @@ function findInLabel(labels: string | any[], body: string) {
     const submissionEnteredDividedClean: string[] = cleanBody(body);
 
     const challengeIdString: string = submissionEnteredDividedClean[0].replace("Challenge Id: [#", "");
-    // console.log(challengeIdString);
 
     const challengeId = Number(challengeIdString.substring(0, challengeIdString.length - 1));
-    // console.log(challengeId);
 
     const hunterString = submissionEnteredDividedClean[1].replace("Hunter: ", "");
-    // console.log(hunterString);
 
     const hunter = hunterString;
-    // console.log(hunter);
 
     labelsObject.challengeId = challengeId;
     labelsObject.user = hunter;    
@@ -294,10 +254,7 @@ function createJSONFile(object: Object | Object[], name: string) {
 
 (async function main() {
   try {
-  //getIssues();
-  //getTeams();
   const arrayOfRepos = await getReposTeam();
-  // console.log(arrayOfRepos)
 
   // Guardar todas las issues de todos los repositorio de arrayOfRepos en issuesOfAllRepos
 
@@ -312,14 +269,11 @@ function createJSONFile(object: Object | Object[], name: string) {
 
     const issuesPerRepo: (CurrentLeaderboard | ChallengeSubmission)[] = await getIssuesTeam(nameRepo, ownerRepo, numberIsues);
 
-    // console.log('Issues de ', nameRepo, ': ', issuesPerRepo.length);
 
     // Add all issues of this repo to the array of all issues
     issuesOfAllRepos.push(...issuesPerRepo);
 
     // Print the array of all issues in this repo
-    // console.log(issuesPerRepo);
-    // console.log(issuesPerRepo.length);
 
     // Convert the array of all issues in a JSON file
     createJSONFile(issuesPerRepo, nameRepo)
@@ -336,6 +290,5 @@ function createJSONFile(object: Object | Object[], name: string) {
   } catch (error: any) {
     console.log(`Error! Status: ${error.status}. Message: ${error}`)
 
-    // console.log(`Error! Status: ${error.status}. Message: ${error.response.data}`)
   }
 })();
