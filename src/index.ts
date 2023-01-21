@@ -1,8 +1,6 @@
 import * as dotenv from 'dotenv';
 import { Octokit } from 'octokit';
 import {
-  Users,
-  CurrentLeaderboard,
   Questions,
   ChallengeSubmission,
   Label
@@ -84,12 +82,16 @@ function findInLabel(labels: string | any[], body: string) {
     const submissionEnteredDividedClean: string[] = cleanBody(body);
 
     const challengeIdString: string = submissionEnteredDividedClean[0].replace("Challenge Id: [#", "");
-
     const challengeId = Number(challengeIdString.substring(0, challengeIdString.length - 1));
 
     const hunterString = submissionEnteredDividedClean[1].replace("Hunter: ", "");
+    var hunter: string;
 
-    const hunter = hunterString;
+    if (hunterString.startsWith("<a href=")) {
+      hunter = hunterString.substring( hunterString.indexOf(">")+1, hunterString.lastIndexOf("<"));
+    } else {
+      hunter = hunterString;
+    }
 
     labelsObject.challengeId = challengeId;
     labelsObject.user = hunter;    
@@ -99,48 +101,83 @@ function findInLabel(labels: string | any[], body: string) {
 }
 
 // Function what recibe a body of issue and scrap the info by question and answer
-function scrapQuestions(body: string, repo: string) {
+function scrapQuestions(body: string) {
 
   // Create a array of type object
   const questions: Questions[] = [];
 
-  // if (repo != "solana-colombia-hacker-house-bounty-program") {
+  // In body when find "### Submission Entered:\n\n" ignore "Challenge Id:" and your his value and ignore "\nHunter:" and his value. After "\n\n" every line is a question and next line is his answer. Save every Question and Answer in a array of object when every object has two properties, question and answer.
 
-    // In body when find "### Submission Entered:\n\n" ignore "Challenge Id:" and your his value and ignore "\nHunter:" and his value. After "\n\n" every line is a question and next line is his answer. Save every Question and Answer in a array of object when every object has two properties, question and answer.
+  // Example of body = "\n___\n### Description\n\nHeavy Duty Builders wants to give a non-official space for teams like yours, that were expecting to share their projects on Demo Day. That’s why this is a very simple but important challenge that would not only help you earn more points but also to share your impact on the Solana ecosystem. \n\nGood luck **hunter**!\n\n1. Make a **SHORT** video of your elevator pitch!\n\n2. Publish it on Twitter with the #BreakpointChallenges and #NonOfficialDemoDay\n\n3. Include @HeavyDutyBuild\n\n\n### Tips\n-Let people know where they can find out more about your project or connect with the team.\n\n-Keep it simple! You never know who could be watching emojieyes\n\n\n___\n### Submission Entered:\n\nChallenge Id: [#223004011]\nHunter: Milan Cupac\n\n1. What’s your Twitter handle?:\n@Cupa" 
 
-    // Example of body = "\n___\n### Description\n\nHeavy Duty Builders wants to give a non-official space for teams like yours, that were expecting to share their projects on Demo Day. That’s why this is a very simple but important challenge that would not only help you earn more points but also to share your impact on the Solana ecosystem. \n\nGood luck **hunter**!\n\n1. Make a **SHORT** video of your elevator pitch!\n\n2. Publish it on Twitter with the #BreakpointChallenges and #NonOfficialDemoDay\n\n3. Include @HeavyDutyBuild\n\n\n### Tips\n-Let people know where they can find out more about your project or connect with the team.\n\n-Keep it simple! You never know who could be watching emojieyes\n\n\n___\n### Submission Entered:\n\nChallenge Id: [#223004011]\nHunter: Milan Cupac\n\n1. What’s your Twitter handle?:\n@Cupa" 
+  const submissionEnteredDividedClean: string[] = cleanBody(body);
 
-    const submissionEnteredDividedClean: string[] = cleanBody(body);
+  // Delet 'Challenge Id' and 'Hunter' from submissionEnteredDividedClean
+  submissionEnteredDividedClean.splice(0,2);
 
-    // Delet 'Challenge Id' and 'Hunter' from submissionEnteredDividedClean
-    submissionEnteredDividedClean.splice(0,2);
-  
-    for (let i = 0; i < submissionEnteredDividedClean.length; i++) {
-      if (i % 2 === 0) {
+  var question = '';
+  var answer = '';
+
+  for (let i = 0; i < submissionEnteredDividedClean.length; i++) {
+
+    // Check if submissionEnteredDividedClean[i] is a question. 
+    // This is if start with a number followed by a period and followed by space. Regex expresion is: /[0-9]+\. /g
+    if (/^[0-9]+\. /g.test(submissionEnteredDividedClean[i])){
+
+      // Old question and answer
+      if (question != '' && answer != ''){
         questions.push({
-          question: submissionEnteredDividedClean[i],
-          answer: submissionEnteredDividedClean[i + 1]
+          question: question,
+          answer: answer
+        })
+      }
+
+      // New question
+      question = submissionEnteredDividedClean[i];
+      answer = '';
+
+    } else {
+      // Here submissionEnteredDividedClean[i] is a answer or a part of one answer:
+      if (answer === '') {
+        answer += submissionEnteredDividedClean[i];
+      } else {
+        answer += '\n' + submissionEnteredDividedClean[i];
+
+      }
+
+      // If is the last element of array
+      if (i === submissionEnteredDividedClean.length - 1) {
+        questions.push({
+          question: question,
+          answer: answer
         })
       }
     }
-  
-    return questions;
+  }
+
+  // Checking questions and submissionEnteredDividedClean
+  // if (questions.length != submissionEnteredDividedClean.length / 2) {
+  //   console.log("submissionEnteredDividedClean: ", submissionEnteredDividedClean);
+  //   console.log("questions: ", questions);
+  // }
+
+  return questions;
 
 }
 
 // Function to scrap the body of a issue Current Leaderboard and return an array of objects with the info
-function scrapUsers(body: string) {
+// function scrapUsers(body: string) {
 
-  const obj = JSON.parse(body)
-  const users: Users[] = obj.users;
+//   const obj = JSON.parse(body)
+//   const users: Users[] = obj.users;
   
-  return users;
-}
+//   return users;
+// }
 
 // Function to get all issues from a especific repository and team
 async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
 
-  const arrayIssues: (CurrentLeaderboard | ChallengeSubmission)[] = [];
+  const arrayIssues: ChallengeSubmission[] = [];
   const numberPages = Math.ceil(numberIsues / 100);
 
   for (let i = 1; i <= numberPages; i++) {
@@ -154,7 +191,7 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
       page: i,
     })
 
-    const arrayOfIssues: (CurrentLeaderboard | ChallengeSubmission)[] = [];
+    const arrayOfIssues: ChallengeSubmission[] = [];
     
     result.data.forEach(issue => {
 
@@ -164,16 +201,17 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
       if (!issue.hasOwnProperty('pull_request')) {
 
         // If the issue have name "Current Leaderboard"
-        if (issue.title.startsWith("Current Leaderboard")) {
-          arrayOfIssues.push(
-            {
-              title: issue.title,
-              repository: repo,
-              id: issue.id,
-              users: scrapUsers(`${issue.body}`),
-            }
-          );
-        } else if (issue.title.startsWith("Challenge Submission")) {
+        // if (issue.title.startsWith("Current Leaderboard")) {
+        //   arrayOfIssues.push(
+        //     {
+        //       title: issue.title,
+        //       repository: repo,
+        //       id: issue.id,
+        //       users: scrapUsers(`${issue.body}`),
+        //     }
+        //   );
+        // } 
+        if (issue.title.startsWith("Challenge Submission")) {
           arrayOfIssues.push(
             {
               title: issue.title,
@@ -181,7 +219,7 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
               id: issue.id,
               body: issue.body,
               ...findInLabel(issue.labels, `${issue.body}`),
-              questions: scrapQuestions(`${issue.body}`, repo),
+              questions: scrapQuestions(`${issue.body}`),
             }
           );
         }
@@ -194,16 +232,17 @@ async function getIssuesTeam(repo: string, owner: string, numberIsues: number) {
 }
 
 // Function to chek data type CurrentLeaderboard
-function instanceOfCurrentLeaderboard(object: any): object is CurrentLeaderboard {
-  return object.title.startsWith("Current Leaderboard");
-}
+// function instanceOfCurrentLeaderboard(object: any): object is CurrentLeaderboard {
+//   return object.title.startsWith("Current Leaderboard");
+// }
+
 // Function to chek data type ChallengeSubmission
 function instanceOfChallengeSubmission(object: any): object is ChallengeSubmission {
   return object.title.startsWith("Challenge Submission");
 }
 
 // Function what by user finded in an issue create a object with properties user, points and an array of objects with properties challengeId and questions 
-function issuesPerUsers (issues: (CurrentLeaderboard | ChallengeSubmission)[]){
+function issuesPerUsers (issues: ChallengeSubmission[]){
   const issuesByUsers: Object = {};
 
   // For each issue.user create a property/key in issuesByUsers with value {sumPoints and an array of issues asocciated with this user}
@@ -213,26 +252,42 @@ function issuesPerUsers (issues: (CurrentLeaderboard | ChallengeSubmission)[]){
   for (const issue of issues) {
 
     // Check if type of issue is CurrentLeaderboard
-    if (instanceOfCurrentLeaderboard(issue)) {
-      for (const user of issue.users) {
-        if (issuesByUsers.hasOwnProperty(`${user.user}`)) {
-          issuesByUsers[`${user.user}`].sumPoints += user.points;
-        } else {
-          issuesByUsers[`${user.user}`] = {
-            sumPoints: user.points,
-          }
-        }
-      }
-    } else if(instanceOfChallengeSubmission(issue)){
-    // Check if type of issue is ChallengeSubmission
+    // if (instanceOfCurrentLeaderboard(issue)) {
+    //   for (const user of issue.users) {
+    //     if (issuesByUsers.hasOwnProperty(`${user.user}`)) {
+    //       issuesByUsers[`${user.user}`].sumPoints += user.points;
+    //     } else {
+    //       issuesByUsers[`${user.user}`] = {
+    //         sumPoints: user.points,
+    //       }
+    //     }
+    //   }
+    // } else 
 
-      if (issuesByUsers.hasOwnProperty(`${issue.user}`)) {
-        issuesByUsers[`${issue.user}`].sumPoints += issue.points;
-        issuesByUsers[`${issue.user}`].issues.push(issue);
+    // Check if type of issue is ChallengeSubmission
+    if(instanceOfChallengeSubmission(issue)){
+
+      const user = issue.user;
+      const repository = `${issue.repository}-Points`;
+
+      if (issuesByUsers.hasOwnProperty(user)) {
+        issuesByUsers[user].issues.push(issue);
+        issuesByUsers[user].sumPoints += issue.points;
+
+        // if issuesByUsers[user] have property key named of issue.repository add the points of the issue to the value of this property key
+        if (issuesByUsers[user].hasOwnProperty(repository)) {
+          issuesByUsers[user][repository] += issue.points;
+        } else {
+          // if issuesByUsers[user] dont have property key named of issue.repository create this property key and add the points of the issue to the value of this property key
+          issuesByUsers[user][repository] = issue.points;
+        }
+
       } else {
-        issuesByUsers[`${issue.user}`] = {
+        // Create property key in issuesByUsers named of issue.repository and value of issue.points
+        issuesByUsers[user] = {
+          issues: [issue],
           sumPoints: issue.points,
-          issues: [issue]
+          [repository]: issue.points,
         }
       } 
     }
@@ -259,7 +314,7 @@ function createJSONFile(object: Object | Object[], name: string) {
   // Guardar todas las issues de todos los repositorio de arrayOfRepos en issuesOfAllRepos
 
   // Array of all issues from all repos
-  const issuesOfAllRepos: (CurrentLeaderboard | ChallengeSubmission)[] = [];
+  const issuesOfAllRepos: ChallengeSubmission[] = [];
 
   // For each repo return and save their issues
   for (let i = 0; i < arrayOfRepos.length; i++) {
@@ -267,7 +322,7 @@ function createJSONFile(object: Object | Object[], name: string) {
     const ownerRepo: string = arrayOfRepos[i].owner;
     const numberIsues: number = Number(arrayOfRepos[i].open_issues_count);
 
-    const issuesPerRepo: (CurrentLeaderboard | ChallengeSubmission)[] = await getIssuesTeam(nameRepo, ownerRepo, numberIsues);
+    const issuesPerRepo: ChallengeSubmission[] = await getIssuesTeam(nameRepo, ownerRepo, numberIsues);
 
 
     // Add all issues of this repo to the array of all issues
@@ -276,7 +331,7 @@ function createJSONFile(object: Object | Object[], name: string) {
     // Print the array of all issues in this repo
 
     // Convert the array of all issues in a JSON file
-    createJSONFile(issuesPerRepo, nameRepo)
+    // createJSONFile(issuesPerRepo, nameRepo)
   }
 
   const issuesPerUsersObject: Object = issuesPerUsers(issuesOfAllRepos);

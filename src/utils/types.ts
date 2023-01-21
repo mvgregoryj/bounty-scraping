@@ -1,14 +1,14 @@
-export interface Users {
-    "user": string;
-    "points": number;
-}
+// export interface Users {
+//     "user": string;
+//     "points": number;
+// }
 
-export interface CurrentLeaderboard {
-    title: string;
-    repository: string;
-    id: number;
-    users: Users[];    
-}
+// export interface CurrentLeaderboard {
+//     title: string;
+//     repository: string;
+//     id: number;
+//     users: Users[];    
+// }
 
 export interface Questions {
     question: string;
